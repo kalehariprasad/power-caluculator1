@@ -91,5 +91,5 @@ jobs:
       - name: Serve container
         id: serving-container
         run: |
-          docker run -d -p 8501:8501 --ipc="host" --name=power $ECR_REGISTRY_URI/$ECR_REPOSITORY:$IMAGE_TAG
+          docker run -d -p 8501:8501 --ipc="host" --name=power $REGISTRY/$REPOSITORY:$IMAGE_TAG
 
