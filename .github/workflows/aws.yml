@@ -41,30 +41,36 @@ jobs:
           ECR_REPOSITORY: ${{ secrets.REPOSITORY }}
           IMAGE_TAG: ${{ secrets.TAG }}
         run: |
-          docker build -t $ECR_REGISTRY_URI/$ECR_REPOSITORY:IMAGE_TAG .
-          docker push $ECR_REGISTRY_URI/$ECR_REPOSITORY:IMAGE_TAG
-          echo "::set-output name=image::$ECR_REGISTRY_URI/$ECR_REPOSITORY:IMAGE_TAG"
-  continous-deplyoment:
-    name: pull from ECR
+          docker build -t $ECR_REGISTRY_URI/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY_URI/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "::set-output name=image::$ECR_REGISTRY_URI/$ECR_REPOSITORY:$IMAGE_TAG"
+
+  continuous-deployment:
+    name: Pull from ECR and Deploy
     runs-on: ubuntu-latest
-    streps: 
-     -name: Checkout Code 
-      uses: actions/checkout@v3
-     -name: Install Utilities
-      run: |
-        sudo apt-get Update
-        sudo apt-get install -y jq unzip
-     -name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.ACCESS_KEY }}
-        aws-region: ${{ secrets.REGION }}
-        audience: sts.amazonaws.com
-      -name: Login to Amazon ECR
+    needs: build-and-push-ecr-image
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Install Utilities
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq unzip
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ACCESS_KEY }}
+          aws-region: ${{ secrets.REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-      -name: pull image from Amazon ECR
+
+      - name: Pull image from Amazon ECR
         id: pull-image
         env:
           aws-access-key-id: ${{ secrets.ACCESS_KEY_ID }}
@@ -75,12 +81,14 @@ jobs:
           ECR_REPOSITORY: ${{ secrets.REPOSITORY }}
           IMAGE_TAG: ${{ secrets.TAG }}
         run: |
-          docker pull $ECR_REGISTRY_URI/$ECR_REPOSITORY:IMAGE_TAG
-       -name: delete previous container
-        id : delete container
+          docker pull $ECR_REGISTRY_URI/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Delete previous container
+        id: delete-container
         run: |
           docker rm -f power || true
-       -name: serve container
-        id: serviong conatiner
+
+      - name: Serve container
+        id: serving-container
         run: |
-          docker run -d -p 8501:8501 --ipc="host" --name=power \$REGISTRY/$REPOSITORY:$IMAGE_TAG
+          docker run -d -p 8501:8501 --ipc="host" --name=power $ECR_REGISTRY_URI/$ECR_REPOSITORY:$IMAGE_TAG
