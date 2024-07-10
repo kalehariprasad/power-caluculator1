@@ -92,4 +92,7 @@ jobs:
         id: serving-container
         run: |
           docker run -d -p 8501:8501 --ipc="host" --name=power $REGISTRY/$REPOSITORY:$IMAGE_TAG
-
+        env:
+          REGISTRY: ${{ secrets.ECR_REGISTRY_URI }}
+          REPOSITORY: ${{ secrets.AWS_ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ secrets.IMAGE_TAG }}
